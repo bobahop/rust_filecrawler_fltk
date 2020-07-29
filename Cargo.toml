@@ -1,0 +1,10 @@
+[package]
+name = "rust_filecrawler_fltk"
+version = "0.1.0"
+authors = ["Bob Hoeppner <32035397+bobahop@users.noreply.github.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+fltk = { version ="0.7.24", features = ["fltk-bundled"] }
