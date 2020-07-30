@@ -32,6 +32,7 @@ mod controls;
 enum Message {
     Search,
     StartDirectory,
+    LogFile,
 }
 
 fn main() {
@@ -60,7 +61,7 @@ fn main() {
 
     let mut directory_button = Button::default().with_pos(hmargin, row3_y).with_size(150, row_height)
                         .with_label("Choose Directory");
-    let mut directory_label = controls::Label::new(175, row3_y, 400, row_height, "", w.color());
+    let directory_label = controls::Label::new(175, row3_y, 400, row_height, "", w.color());
 
     let inp_filetypes = controls::TextBox::new(175, row4_y, 400, row_height, 
                         "txt", "File Types (e.g. txt,doc): ");
@@ -77,9 +78,9 @@ fn main() {
     inp_max_files.set_maximum_size(4);
     inp_max_files.set_value("250");
 
-    let inp_logfile = controls::TextBox::new(130, row9_y,
+    let inp_log_file = controls::TextBox::new(130, row9_y,
                          400, row_height, "", "Log File (optional):");   
-    let logfile_button = Button::default().with_pos(545, row9_y).with_size(125, 20)
+    let mut log_file_button = Button::default().with_pos(545, row9_y).with_size(125, 20)
                         .with_label("Choose Log File");
 
     let mut search_button = Button::default().with_pos(5, row10_y).with_size(100, row_height)
@@ -95,6 +96,7 @@ fn main() {
 
     search_button.emit(s, Message::Search);
     directory_button.emit(s, Message::StartDirectory);
+    log_file_button.emit(s, Message::LogFile);
 
     while myapp.wait().unwrap() {
         match r.recv() {
@@ -115,10 +117,30 @@ fn main() {
                     directory_label.set_value(starting_directory);
                     w.redraw();
                 }
+                Message::LogFile => {
+                    let log_file = &inp_log_file.value();
+                    let log_file = &(get_log_file(&myapp, &log_file));
+                    inp_log_file.set_value(log_file);
+                    w.redraw();
+                }
             }
             None => {}
         }
         thread::sleep(time::Duration::from_millis(16));
+    }
+}
+
+fn get_log_file(myapp: &App, log_file: &str) -> String{
+    let mut fc = FileChooser::new(log_file, "", FileChooserType::Single, "Choose your log file...");
+    fc.show();
+    while fc.shown() {
+        myapp.wait().unwrap();
+    }
+    if fc.value(1).is_none(){
+        return log_file.to_string();
+    }
+    else {
+        fc.value(1).unwrap()
     }
 }
 
@@ -130,7 +152,7 @@ fn get_start_directory(myapp: &App, start_directory: &str) -> String{
     }
     //println!("{} {}", fc.value(1).unwrap(), fc.directory().unwrap());
     if fc.value(1).is_none(){
-        return start_directory.to_string();
+        start_directory.to_string()
     }
     else {
         fc.value(1).unwrap()
