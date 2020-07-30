@@ -1,11 +1,17 @@
+#![windows_subsystem = "windows"]
+
 use fltk::{
-    app::{App, AppScheme},
+    app::{App, AppScheme, channel},
     browser::Browser,
     button::{Button, CheckButton},
+    dialog:: {FileChooser, FileChooserType},
     input::{IntInput},
     prelude::*,
-    window::Window,
+    window::DoubleWindow,
 };
+
+use std::{thread, time};
+//use regex::Regex;
 mod controls;
 
 #[allow(unused_variables)]
@@ -22,49 +28,151 @@ mod controls;
 //Search: button
 //list of found files
 
+#[derive(Debug, Copy, Clone)]
+enum Message {
+    Search,
+    StartDirectory,
+}
+
 fn main() {
-    let app = App::default().with_scheme(AppScheme::Gleam);
-    let gap = 10;
-    let mut w = Window::default().with_size(800, 600).center_screen().with_label("Rust File Crawler using fltk-rs");
-    let mut title = controls::Label::new(5, 5, 750, 20, "Error here", w.color());
+    
+    let myapp = App::default().with_scheme(AppScheme::Plastic);
+    let vmargin = 10;
+    let hmargin = 5;
+    let row_height = 20;
+    let row1_y = vmargin;
+    let row2_y = row1_y + row_height + vmargin;
+    let row3_y = row2_y + row_height + vmargin;
+    let row4_y = row3_y + row_height + vmargin;
+    let row5_y = row4_y + row_height + vmargin;
+    let row6_y = row5_y + row_height + (vmargin / 2);
+    let row7_y = row6_y + row_height + vmargin;
+    let row8_y = row7_y + row_height + vmargin;
+    let row9_y = row8_y + row_height + vmargin;
+    let row10_y = row9_y + row_height + vmargin;
+    let row11_y = row10_y + row_height + vmargin;
+    let mut w = DoubleWindow::default().with_size(800, 600).center_screen().with_label("Rust File Crawler using fltk-rs");
+    let mut title = controls::Label::new(hmargin, row1_y, 750, row_height, "", w.color());
     title.set_text_color(Color::Red);
-    let greeting = controls::Label::new(5, title.y() + title.height() + gap, 750, 20, 
+    let greeting = controls::Label::new(hmargin, row2_y, 750, row_height, 
         "Welcome to FileCrawler! Search the contents of files for your search term or regular expression...",
         w.color());
 
-    let file_button = Button::default().with_pos(5, greeting.y() + greeting.height() + gap).with_size(150, 20)
+    let mut directory_button = Button::default().with_pos(hmargin, row3_y).with_size(150, row_height)
                         .with_label("Choose Directory");
-    let directory = controls::Label::new(175, file_button.y(), 400, 20, "...", w.color());
+    let mut directory_label = controls::Label::new(175, row3_y, 400, row_height, "", w.color());
 
-    let inp_filetypes = controls::TextBox::new(245, file_button.y() + file_button.height() + gap, 400, 20, 
-                        "txt", "File Types (e.g. txt,doc) Default is txt:");
+    let inp_filetypes = controls::TextBox::new(175, row4_y, 400, row_height, 
+                        "txt", "File Types (e.g. txt,doc): ");
 
-    let inp_search = controls::TextBox::new(85, inp_filetypes.y() + inp_filetypes.height() + gap, 400, 20, "", "Search For:");
-    let chk_usecase_button = CheckButton::default().with_pos(100, 
-                                inp_search.y() + inp_search.height() + gap / 2)
-                                .with_size(20, 20).with_align(Align::Left).with_label("Case sensitive");
+    let inp_search = controls::TextBox::new(85, row5_y, 400, row_height, "", "Search For:");
+    let chk_usecase_button = CheckButton::default().with_pos(100, row6_y)
+                                .with_size(20, row_height).with_align(Align::Left).with_label("Case sensitive");
 
-    let regex_search = controls::TextBox::new(365, chk_usecase_button.y() + chk_usecase_button.height() + gap, 425, 20, "",
+    let inp_regex_search = controls::TextBox::new(365, row7_y, 425, row_height, "",
                          "Regular expression (supercedes search term and case):");
 
-    let mut inp_max_files = IntInput::default().with_pos(140, regex_search.y() + regex_search.height() + gap)
-                            .with_size(50, 20).with_align(Align::Left).with_label("Max found files limit: ");
+    let mut inp_max_files = IntInput::default().with_pos(140, row8_y)
+                            .with_size(50, row_height).with_align(Align::Left).with_label("Max found files limit: ");
     inp_max_files.set_maximum_size(4);
     inp_max_files.set_value("250");
 
-    let inp_logfile = controls::TextBox::new(130, inp_max_files.y() + inp_max_files.height() + gap,
-                         400, 20, "", "Log File (optional):");   
-    let logfile_button = Button::default().with_pos(545, inp_logfile.y()).with_size(125, 20)
+    let inp_logfile = controls::TextBox::new(130, row9_y,
+                         400, row_height, "", "Log File (optional):");   
+    let logfile_button = Button::default().with_pos(545, row9_y).with_size(125, 20)
                         .with_label("Choose Log File");
 
-    let search_button = Button::default().with_pos(5, inp_logfile.y() + inp_logfile.height() + gap).with_size(100, 20)
+    let mut search_button = Button::default().with_pos(5, row10_y).with_size(100, row_height)
                         .with_label("Search");
 
-    let found_file_browser = Browser::default().with_pos(5, search_button.y() + search_button.height() + gap).with_size(775, 300);
+    let found_file_browser = Browser::default().with_pos(5, row11_y).with_size(775, 290);
 
     w.make_resizable(true);
     w.end();
     w.show();
 
-    app.run().unwrap();
+    let (s, r) = channel::<Message>();
+
+    search_button.emit(s, Message::Search);
+    directory_button.emit(s, Message::StartDirectory);
+
+    while myapp.wait().unwrap() {
+        match r.recv() {
+            Some(msg) => match msg {
+                Message::Search => {
+                    let (is_valid, text) = validate(directory_label.value().trim(),
+                        inp_search.value().trim(), inp_regex_search.value().trim(),
+                        inp_max_files.value().trim());
+                    title.set_value(&text);
+                    w.redraw();
+                    if !is_valid {
+                        continue;
+                    }
+                },
+                Message::StartDirectory => {
+                    let starting_directory = &directory_label.value();
+                    let starting_directory = &(get_start_directory(&myapp, starting_directory));
+                    directory_label.set_value(starting_directory);
+                    w.redraw();
+                }
+            }
+            None => {}
+        }
+        thread::sleep(time::Duration::from_millis(16));
+    }
+}
+
+fn get_start_directory(myapp: &App, start_directory: &str) -> String{
+    let mut fc = FileChooser::new(start_directory, "", FileChooserType::Directory, "Choose your start directory...");
+    fc.show();
+    while fc.shown() {
+        myapp.wait().unwrap();
+    }
+    //println!("{} {}", fc.value(1).unwrap(), fc.directory().unwrap());
+    if fc.value(1).is_none(){
+        return start_directory.to_string();
+    }
+    else {
+        fc.value(1).unwrap()
+    }
+}
+
+fn validate (directory: &str,inp_search: &str, inp_regex_search: &str,
+                inp_max_files: &str) -> (bool, String) {
+    let response_text : String;
+    let retval: bool;
+    if directory == "" {
+        retval = false;
+        response_text = "You need a starting directory.".to_string();
+    }
+    else if inp_search == "" && inp_regex_search == "" {
+        retval = false;
+        response_text = "You need a search term or regular expression.".to_string();
+    }
+    else
+    {
+        let max_valid = match inp_max_files.parse::<i32>() {
+            Ok (val) => {
+                if val <= 0 {
+                    false
+                }
+                else {
+                //inp_max_files is set for maximum_size of 4 bytes, i.e. value of 9999
+                //so no need to test for too large a number
+                    true
+                }
+            },
+            Err(_) => false,
+        };
+        if !max_valid {
+            retval = false;
+            response_text = "Max found files must be a number from 1 to 9999.".to_string();
+        }
+        else {
+            retval = true;
+            response_text = "".to_string();
+        }
+    }
+
+    (retval, response_text)
 }

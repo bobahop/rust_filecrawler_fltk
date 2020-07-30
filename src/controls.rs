@@ -1,5 +1,5 @@
 use fltk::{input::Input, output::Output, prelude::*};
-use std::*;
+use std::ops::{Deref, DerefMut};
 
 pub struct TextBox {
     pub text_box: Input,
@@ -19,7 +19,7 @@ impl TextBox {
     }
 }
 
-impl ops::Deref for TextBox {
+impl Deref for TextBox {
     type Target = Input;
 
     fn deref(&self) -> &Self::Target {
@@ -27,7 +27,7 @@ impl ops::Deref for TextBox {
     }
 }
 
-impl ops::DerefMut for TextBox {
+impl DerefMut for TextBox {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.text_box
     }
@@ -45,11 +45,12 @@ impl Label {
         lbl.label.set_value(text);
         lbl.label.set_frame(FrameType::NoBox);
         lbl.label.set_color(bg_color);
+        //lbl.label.set_readonly(true);
         lbl
     }
 }
 
-impl ops::Deref for Label {
+impl Deref for Label {
     type Target = Output;
 
     fn deref(&self) -> &Self::Target {
@@ -57,7 +58,7 @@ impl ops::Deref for Label {
     }
 }
 
-impl ops::DerefMut for Label {
+impl DerefMut for Label {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.label
     }
