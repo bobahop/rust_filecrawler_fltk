@@ -77,7 +77,7 @@ fn main() {
                         .with_label("Choose Directory");
     let directory_label = controls::Label::new(175, row3_y, 400, row_height, "", w.color());
 
-    let inp_filetypes = controls::TextBox::new(175, row4_y, 400, row_height, 
+    let inp_filetypes = controls::TextBox::new(165, row4_y, 400, row_height, 
                         "txt", "File Types (e.g. txt,doc): ");
 
     let inp_search = controls::TextBox::new(85, row5_y, 400, row_height, "", "Search For:");
@@ -148,7 +148,8 @@ fn main() {
                     }
                     found_file_browser.clear();
                     search(&search_term, &directory_label.value(),
-                            &extensions, &inp_log_file.value(),
+                            &extensions, inp_max_files.value().parse::<usize>().unwrap(),
+                            &inp_log_file.value(),
                             &mut found_file_browser, &log);
                 },
                 Message::StartDirectory => {
@@ -349,16 +350,26 @@ fn file_has_match(entry: &walkdir::DirEntry, search_reg: &Regex) -> bool {
 }
 
 fn search(search_reg: &Regex, root: &str, extensions: &Vec<Regex>, 
+    max_files: usize,
     log_name: &str, file_list: &mut Browser,
     logger: &dyn Fn(&str, &str, &mut Browser)){
+    let mut found_count: usize = 0;
     for entry in WalkDir::new(&root).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file() {
             if !is_valid_file(entry.file_name().to_str().unwrap(), extensions) {
                 continue;
             }
             if file_has_match(&entry, &search_reg) {
-                logger(&format!("{}", entry.path().to_str().unwrap()),
-                        log_name, file_list);
+                found_count += 1;
+                if found_count <= max_files {
+                    logger(&format!("{}", entry.path().to_str().unwrap()),
+                            log_name, file_list);
+                }
+                else {
+                    logger(&format!("{} {}", "Found files exceeded the limit of", max_files),
+                            log_name, file_list);
+                    return;
+                }
             }
         }
     }
