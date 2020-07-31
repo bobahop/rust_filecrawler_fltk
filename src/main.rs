@@ -103,13 +103,14 @@ fn main() {
             Some(msg) => match msg {
                 Message::Search => {
                     let (is_valid, text) = validate(directory_label.value().trim(),
-                        inp_search.value().trim(), inp_regex_search.value().trim(),
-                        inp_max_files.value().trim());
+                        inp_filetypes.value().trim(), inp_search.value().trim(), 
+                        inp_regex_search.value().trim(), inp_max_files.value().trim());
                     title.set_value(&text);
                     w.redraw();
                     if !is_valid {
                         continue;
                     }
+                    
                 },
                 Message::StartDirectory => {
                     let starting_directory = &directory_label.value();
@@ -159,13 +160,25 @@ fn get_start_directory(myapp: &App, start_directory: &str) -> String{
     }
 }
 
-fn validate (directory: &str,inp_search: &str, inp_regex_search: &str,
+fn validate (directory: &str, file_types: &str,
+                inp_search: &str, inp_regex_search: &str,
                 inp_max_files: &str) -> (bool, String) {
     let response_text : String;
     let retval: bool;
+    let file_types_scrubbed = file_types.replace(" ", "");
+    let file_types_count: usize = file_types_scrubbed.split(",").count();
+    let file_types_rescrubbed = file_types_scrubbed.replace(",", "");
     if directory == "" {
         retval = false;
         response_text = "You need a starting directory.".to_string();
+    }
+    else if file_types_rescrubbed == "" {
+        retval = false;
+        response_text = "You need at least 1 file type.".to_string();
+    }
+    else if file_types_count > 25 {
+        retval = false;
+        response_text = "Maximum of 25 file types.".to_string();
     }
     else if inp_search == "" && inp_regex_search == "" {
         retval = false;
