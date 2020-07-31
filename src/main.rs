@@ -10,11 +10,12 @@ use fltk::{
     window::DoubleWindow,
 };
 
-use std::{thread, time};
-//use regex::Regex;
+use std::{error::Error, fmt, thread, time};
+use std::fs::{File, OpenOptions} ;
+use std::io::{prelude::*, BufReader};
+use regex::Regex;
+use walkdir::WalkDir;
 mod controls;
-
-#[allow(unused_variables)]
 
 //title label:
 //greeting label: Welcome to FileCrawler! Search the contents of files for your search term or regular expression..."
@@ -34,6 +35,19 @@ enum Message {
     StartDirectory,
     LogFile,
 }
+
+#[derive(Debug)]
+struct BobError {
+    text: String,
+}
+
+impl fmt::Display for BobError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", &self.text)
+    }
+}
+
+impl Error for BobError {}
 
 fn main() {
     
@@ -55,7 +69,7 @@ fn main() {
     let mut w = DoubleWindow::default().with_size(800, 600).center_screen().with_label("Rust File Crawler using fltk-rs");
     let mut title = controls::Label::new(hmargin, row1_y, 750, row_height, "", w.color());
     title.set_text_color(Color::Red);
-    let greeting = controls::Label::new(hmargin, row2_y, 750, row_height, 
+    let _greeting = controls::Label::new(hmargin, row2_y, 750, row_height, 
         "Welcome to FileCrawler! Search the contents of files for your search term or regular expression...",
         w.color());
 
@@ -86,7 +100,7 @@ fn main() {
     let mut search_button = Button::default().with_pos(5, row10_y).with_size(100, row_height)
                         .with_label("Search");
 
-    let found_file_browser = Browser::default().with_pos(5, row11_y).with_size(775, 290);
+    let mut found_file_browser = Browser::default().with_pos(5, row11_y).with_size(775, 290);
 
     w.make_resizable(true);
     w.end();
@@ -102,15 +116,40 @@ fn main() {
         match r.recv() {
             Some(msg) => match msg {
                 Message::Search => {
-                    let (is_valid, text) = validate(directory_label.value().trim(),
-                        inp_filetypes.value().trim(), inp_search.value().trim(), 
-                        inp_regex_search.value().trim(), inp_max_files.value().trim());
+                    let (is_valid, text) = validate(&directory_label.value(),
+                        &inp_filetypes.value(), &inp_search.value(), 
+                        &inp_regex_search.value(), &inp_max_files.value());
                     title.set_value(&text);
                     w.redraw();
                     if !is_valid {
                         continue;
                     }
-                    
+                    let extensions: Vec<Regex>;
+                    let result = extensions_factory(&inp_filetypes.value());
+                    match result {
+                        Ok(v) => extensions = v,
+                        Err(e) => {
+                            title.set_value(&e.text);
+                            w.redraw();
+                            continue;
+                        }
+                    }
+                    let search_term: Regex;
+                    let result = set_search_term(&inp_search.value(),
+                                 chk_usecase_button.is_checked(),
+                                 &inp_regex_search.value());
+                    match result {
+                        Ok(v) => search_term = v,
+                        Err(e) => {
+                            title.set_value(&e.text);
+                            w.redraw();
+                            continue;
+                        },
+                    }
+                    found_file_browser.clear();
+                    search(&search_term, &directory_label.value(),
+                            &extensions, &inp_log_file.value(),
+                            &mut found_file_browser, &log);
                 },
                 Message::StartDirectory => {
                     let starting_directory = &directory_label.value();
@@ -129,6 +168,7 @@ fn main() {
         }
         thread::sleep(time::Duration::from_millis(16));
     }
+
 }
 
 fn get_log_file(myapp: &App, log_file: &str) -> String{
@@ -165,10 +205,10 @@ fn validate (directory: &str, file_types: &str,
                 inp_max_files: &str) -> (bool, String) {
     let response_text : String;
     let retval: bool;
-    let file_types_scrubbed = file_types.replace(" ", "");
+    let file_types_scrubbed = file_types.trim().replace(" ", "");
     let file_types_count: usize = file_types_scrubbed.split(",").count();
     let file_types_rescrubbed = file_types_scrubbed.replace(",", "");
-    if directory == "" {
+    if directory.trim() == "" {
         retval = false;
         response_text = "You need a starting directory.".to_string();
     }
@@ -180,13 +220,13 @@ fn validate (directory: &str, file_types: &str,
         retval = false;
         response_text = "Maximum of 25 file types.".to_string();
     }
-    else if inp_search == "" && inp_regex_search == "" {
+    else if inp_search.trim() == "" && inp_regex_search.trim() == "" {
         retval = false;
         response_text = "You need a search term or regular expression.".to_string();
     }
     else
     {
-        let max_valid = match inp_max_files.parse::<i32>() {
+        let max_valid = match inp_max_files.trim().parse::<i32>() {
             Ok (val) => {
                 if val <= 0 {
                     false
@@ -211,3 +251,135 @@ fn validate (directory: &str, file_types: &str,
 
     (retval, response_text)
 }
+
+fn extensions_factory(ext: &str) -> Result<Vec<Regex>, BobError> {
+    //do case insensitive match for filename ending. Example: "(?i)\.txt$"
+    //maximum of 25 extensions
+    let ext_scrubbed = ext.trim().replace(" ", "");
+    let raw_extensions: Vec<&str> = ext_scrubbed.split(",").collect();
+
+    let mut regexts: Vec<Regex> = Vec::with_capacity(raw_extensions.len());
+    for raw_extension in raw_extensions.iter() {
+        let mut raw_extension = raw_extension.to_string();
+        if raw_extension.starts_with(".") {
+            raw_extension = "(?i)\\".to_string() + &raw_extension + "$";
+        } else {
+            raw_extension = "(?i)\\.".to_string() + &raw_extension + "$";
+        }
+        let reg_result = Regex::new(&raw_extension);
+        match reg_result {
+            Err(_) => {
+                return Err(BobError {
+                    text: format!("Failed to accept extension {}", &raw_extension),
+                })
+            }
+            Ok(v) => regexts.push(v),
+        }
+    }
+
+    Ok(regexts.clone())
+}
+
+fn set_search_term(
+    term: &str, case: bool, regexp: &str
+) -> Result<Regex, BobError> {
+    let result = set_regex(regexp, case, term);
+    match result {
+        Ok(v) => Ok(v),
+        Err(e) => {
+            Err(BobError {text: get_regerror(&e, regexp, case, term)})
+        },
+    }
+}
+
+fn set_regex(regexp: &str, case: bool, term: &str) -> Result<Regex, regex::Error> {
+    if regexp != "" {
+        Regex::new(regexp)
+    } else {
+        let caseterm = if case {
+            ""
+        } else {
+            "(?i)"
+        };
+        let mut searchterm = String::from(caseterm);
+        searchterm.push_str(term);
+        Regex::new(&searchterm)
+    }
+}
+
+fn get_regerror(
+    error: &regex::Error,
+    regexp: &str,
+    case: bool,
+    term: &str,
+)  -> String {
+    if regexp != "" {
+        format!("Problem regexp {} into regex {:?}", regexp, error)
+    } else {
+        format!(
+            "Problem parsing term \"{}\" and case \"{}\" into regex {:?}",
+            term, case, error
+        )
+    }
+}
+
+fn is_valid_file(file_name: &str, extensions: &Vec<Regex>) -> bool {
+    for extension in extensions {
+        if extension.is_match(file_name) {
+            return true;
+        }
+    }
+    false
+}
+
+fn file_has_match(entry: &walkdir::DirEntry, search_reg: &Regex) -> bool {
+    let file: File;
+    let result = File::open(entry.path());
+    match result {
+        Ok(v) => file = v,
+        Err(_) => return false,
+    }
+    let mut buf_reader = BufReader::new(file);
+    let mut contents = String::new();
+    let result = buf_reader.read_to_string(&mut contents);
+    match result {
+        Ok(_) => search_reg.is_match(&contents),
+        Err(_) => false,
+    }
+}
+
+fn search(search_reg: &Regex, root: &str, extensions: &Vec<Regex>, 
+    log_name: &str, file_list: &mut Browser,
+    logger: &dyn Fn(&str, &str, &mut Browser)){
+    for entry in WalkDir::new(&root).into_iter().filter_map(|e| e.ok()) {
+        if entry.file_type().is_file() {
+            if !is_valid_file(entry.file_name().to_str().unwrap(), extensions) {
+                continue;
+            }
+            if file_has_match(&entry, &search_reg) {
+                logger(&format!("{}", entry.path().to_str().unwrap()),
+                        log_name, file_list);
+            }
+        }
+    }
+}
+
+fn log(msg: &str, log_name: &str, browser: &mut Browser){
+    if log_name == ""{
+        browser.add(msg);
+    }
+    else {
+        let mut file = OpenOptions::new()
+                        .append(true)
+                        .create(true)
+                        .open(log_name)
+                        .unwrap();
+        file.write_all(msg.as_bytes()).unwrap();
+        file.write_all("\n".as_bytes()).unwrap();
+    }
+}
+
+
+
+
+

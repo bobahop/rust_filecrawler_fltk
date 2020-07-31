@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 fltk = { version ="0.7.25", features = ["fltk-bundled"] }
 regex = "1"
+walkdir = "2"
