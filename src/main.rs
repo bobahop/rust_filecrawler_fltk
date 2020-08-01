@@ -40,14 +40,14 @@ enum Message {
 struct BobError {
     text: String,
 }
-
 impl fmt::Display for BobError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", &self.text)
     }
 }
-
 impl Error for BobError {}
+
+const BAD_FILE_CHARS: &str = r#"[\\/:*?"<>|]"#;
 
 fn main() {
     
@@ -118,12 +118,14 @@ fn main() {
                 Message::Search => {
                     let (is_valid, text) = validate(&directory_label.value(),
                         &inp_filetypes.value(), &inp_search.value(), 
-                        &inp_regex_search.value(), &inp_max_files.value());
+                        &inp_regex_search.value(), &inp_max_files.value(),
+                        &inp_log_file.value());
                     title.set_value(&text);
                     w.redraw();
                     if !is_valid {
                         continue;
                     }
+
                     let extensions: Vec<Regex>;
                     let result = extensions_factory(&inp_filetypes.value());
                     match result {
@@ -134,6 +136,7 @@ fn main() {
                             continue;
                         }
                     }
+
                     let search_term: Regex;
                     let result = set_search_term(&inp_search.value(),
                                  chk_usecase_button.is_checked(),
@@ -146,11 +149,21 @@ fn main() {
                             continue;
                         },
                     }
+
                     found_file_browser.clear();
-                    search(&search_term, &directory_label.value(),
-                            &extensions, inp_max_files.value().parse::<usize>().unwrap(),
-                            &inp_log_file.value(),
-                            &mut found_file_browser, &log);
+
+                    let file_list =
+                    search(&search_term, &directory_label.value(), &extensions, 
+                            inp_max_files.value().parse::<usize>().unwrap());
+                            
+                    if inp_log_file.value().trim() == "" {
+                        for file in file_list {
+                            found_file_browser.add(&file);
+                        }
+                    }
+                    else {
+                        log(&inp_log_file.value().trim(), &file_list);
+                    }
                 },
                 Message::StartDirectory => {
                     let starting_directory = &directory_label.value();
@@ -203,12 +216,13 @@ fn get_start_directory(myapp: &App, start_directory: &str) -> String{
 
 fn validate (directory: &str, file_types: &str,
                 inp_search: &str, inp_regex_search: &str,
-                inp_max_files: &str) -> (bool, String) {
+                inp_max_files: &str, inp_log_file: &str) -> (bool, String) {
     let response_text : String;
     let retval: bool;
     let file_types_scrubbed = file_types.trim().replace(" ", "");
     let file_types_count: usize = file_types_scrubbed.split(",").count();
     let file_types_rescrubbed = file_types_scrubbed.replace(",", "");
+    let inp_log_file = inp_log_file.trim();
     if directory.trim() == "" {
         retval = false;
         response_text = "You need a starting directory.".to_string();
@@ -224,6 +238,10 @@ fn validate (directory: &str, file_types: &str,
     else if inp_search.trim() == "" && inp_regex_search.trim() == "" {
         retval = false;
         response_text = "You need a search term or regular expression.".to_string();
+    }
+    else if inp_log_file != "" && Regex::new(BAD_FILE_CHARS).unwrap().is_match(inp_log_file) {
+            retval = false;
+            response_text = format!("{} is a bad file name", inp_log_file);
     }
     else
     {
@@ -350,10 +368,9 @@ fn file_has_match(entry: &walkdir::DirEntry, search_reg: &Regex) -> bool {
 }
 
 fn search(search_reg: &Regex, root: &str, extensions: &Vec<Regex>, 
-    max_files: usize,
-    log_name: &str, file_list: &mut Browser,
-    logger: &dyn Fn(&str, &str, &mut Browser)){
+    max_files: usize,) -> Vec<String>{
     let mut found_count: usize = 0;
+    let mut file_list: Vec<String> = Vec::with_capacity(max_files);
     for entry in WalkDir::new(&root).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file() {
             if !is_valid_file(entry.file_name().to_str().unwrap(), extensions) {
@@ -362,30 +379,27 @@ fn search(search_reg: &Regex, root: &str, extensions: &Vec<Regex>,
             if file_has_match(&entry, &search_reg) {
                 found_count += 1;
                 if found_count <= max_files {
-                    logger(&format!("{}", entry.path().to_str().unwrap()),
-                            log_name, file_list);
+                    file_list.push(entry.path().to_string_lossy().to_string());
                 }
                 else {
-                    logger(&format!("{} {}", "Found files exceeded the limit of", max_files),
-                            log_name, file_list);
-                    return;
+                    file_list.push(format!("Found files exceeded the limit of {}", max_files).to_string());
+                    break;
                 }
             }
         }
     }
+    file_list
 }
 
-fn log(msg: &str, log_name: &str, browser: &mut Browser){
-    if log_name == ""{
-        browser.add(msg);
-    }
-    else {
-        let mut file = OpenOptions::new()
-                        .append(true)
-                        .create(true)
-                        .open(log_name)
-                        .unwrap();
-        file.write_all(msg.as_bytes()).unwrap();
+fn log(log_name: &str, file_list: &Vec<String>){
+    let mut file = OpenOptions::new()
+                    .append(true)
+                    .create(true)
+                    .open(log_name)
+                    .unwrap();
+
+    for found_file in file_list {
+        file.write_all(found_file.as_bytes()).unwrap();
         file.write_all("\n".as_bytes()).unwrap();
     }
 }
