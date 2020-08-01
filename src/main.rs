@@ -48,7 +48,13 @@ impl fmt::Display for BobError {
 impl Error for BobError {}
 
 //must allow : or / for path character even though not legal for an actual file name
-//so there is potential for a panic if user enters only a file name including a : or /
+//on my Windows 10 machine...
+//embedded / will display error if it is an incorrect path
+//embedded : will truncate everything after it and create a log file 
+//           named with the more than two characters before it
+//1 character before : "The system cannot find the path specified. (os error 3)"
+//x characters before : and no characters after it
+//                      "The filename, directory name, or volume label syntax is incorrect. (os error 123)"
 const BAD_FILE_CHARS: &str = r#"[\\*?"<>|]"#;
 
 fn main() {
@@ -164,9 +170,13 @@ fn main() {
                         }
                     }
                     else {
-                        log(&inp_log_file.value().trim(), &file_list);
-                        let text = format!("Your results are in! Please check {}", &inp_log_file.value());
-                        greeting.set_value(&text);
+                        match log(&inp_log_file.value().trim(), &file_list){
+                            Ok(_) => {
+                                let text = format!("Your results are in! Please check {}", inp_log_file.value());
+                                greeting.set_value(&text);
+                            },
+                            Err(e) => title.set_value(&e.text),
+                        };
                         w.redraw();
                     }
                 },
@@ -396,17 +406,21 @@ fn search(search_reg: &Regex, root: &str, extensions: &Vec<Regex>,
     file_list
 }
 
-fn log(log_name: &str, file_list: &Vec<String>){
-    let mut file = OpenOptions::new()
+fn log(log_name: &str, file_list: &Vec<String>) -> Result<bool, BobError>{
+    let mut file = match OpenOptions::new()
                     .append(true)
                     .create(true)
-                    .open(log_name)
-                    .unwrap();
+                    .open(log_name){
+                        Ok(val) => val,
+                        Err(e) => return Err(BobError{text: e.to_string()}),
+                    };
 
     for found_file in file_list {
         file.write_all(found_file.as_bytes()).unwrap();
         file.write_all("\n".as_bytes()).unwrap();
     }
+
+    Ok(true)
 }
 
 
