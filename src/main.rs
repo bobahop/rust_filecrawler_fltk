@@ -47,7 +47,9 @@ impl fmt::Display for BobError {
 }
 impl Error for BobError {}
 
-const BAD_FILE_CHARS: &str = r#"[\\/:*?"<>|]"#;
+//must allow : or / for path character even though not legal for an actual file name
+//so there is potential for a panic if user enters only a file name including a : or /
+const BAD_FILE_CHARS: &str = r#"[\\*?"<>|]"#;
 
 fn main() {
     
@@ -69,7 +71,7 @@ fn main() {
     let mut w = DoubleWindow::default().with_size(800, 600).center_screen().with_label("Rust File Crawler using fltk-rs");
     let mut title = controls::Label::new(hmargin, row1_y, 750, row_height, "", w.color());
     title.set_text_color(Color::Red);
-    let _greeting = controls::Label::new(hmargin, row2_y, 750, row_height, 
+    let greeting = controls::Label::new(hmargin, row2_y, 750, row_height, 
         "Welcome to FileCrawler! Search the contents of files for your search term or regular expression...",
         w.color());
 
@@ -155,7 +157,7 @@ fn main() {
                     let file_list =
                     search(&search_term, &directory_label.value(), &extensions, 
                             inp_max_files.value().parse::<usize>().unwrap());
-                            
+
                     if inp_log_file.value().trim() == "" {
                         for file in file_list {
                             found_file_browser.add(&file);
@@ -163,6 +165,9 @@ fn main() {
                     }
                     else {
                         log(&inp_log_file.value().trim(), &file_list);
+                        let text = format!("Your results are in! Please check {}", &inp_log_file.value());
+                        greeting.set_value(&text);
+                        w.redraw();
                     }
                 },
                 Message::StartDirectory => {
