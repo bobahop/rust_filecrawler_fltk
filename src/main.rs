@@ -4,14 +4,14 @@ use fltk::{
     app::{App, AppScheme, channel},
     browser::Browser,
     button::{Button, CheckButton},
-    dialog:: {FileChooser, FileChooserType},
+    dialog:: {FileChooser, FileChooserType, message},
     input::{IntInput},
     prelude::*,
     window::DoubleWindow,
 };
 
-use std::{error::Error, fmt, thread, time};
-use std::fs::{File, OpenOptions} ;
+use std::{error::Error, fmt, panic, thread, time};
+use std::fs::{File, OpenOptions};
 use std::io::{prelude::*, BufReader};
 use regex::Regex;
 use walkdir::WalkDir;
@@ -58,7 +58,7 @@ impl Error for BobError {}
 const BAD_FILE_CHARS: &str = r#"[\\*?"<>|]"#;
 
 fn main() {
-    
+    panic::set_hook(Box::new(|panic_info| { message(200, 200, &panic_info.to_string());}));
     let myapp = App::default().with_scheme(AppScheme::Plastic);
     let vmargin = 10;
     let hmargin = 5;

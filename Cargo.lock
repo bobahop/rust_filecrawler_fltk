@@ -26,9 +26,9 @@ dependencies = [
 
 [[package]]
 name = "fltk"
-version = "0.7.25"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c1398b1dce0167ba139faabe9ab0fd9f9593babb26b8a0e725ee14a9502235f"
+checksum = "67a77cb07840264043d6dfaf843c64f97a78287ba5b73c3bee51504b246bb65a"
 dependencies = [
  "fltk-derive",
  "fltk-sys",
@@ -36,9 +36,9 @@ dependencies = [
 
 [[package]]
 name = "fltk-derive"
-version = "0.7.25"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dad4a679a05a882a03ba3c4bc5ebe756e6facdbe81c8330554a0eed1c57f5e33"
+checksum = "dfbc299fba3c0853ec4ed7ade280841ab94b024881fc0e3a7bdf78bf6acefbdc"
 dependencies = [
  "quote",
  "syn",
@@ -46,11 +46,12 @@ dependencies = [
 
 [[package]]
 name = "fltk-sys"
-version = "0.7.25"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96365a2eaaf53ad66d8fb567b119a0a39e976eaaf2bf560796675b1ebe417cbc"
+checksum = "793b18321ae9523ed8e49384c30f855cb318a656e4079b2b78b6f7a7b133287b"
 dependencies = [
  "cmake",
+ "libc",
 ]
 
 [[package]]
@@ -58,6 +59,12 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+
+[[package]]
+name = "libc"
+version = "0.2.74"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2f02823cf78b754822df5f7f268fb59822e7296276d3e069d8e8cb26a14bd10"
 
 [[package]]
 name = "memchr"
