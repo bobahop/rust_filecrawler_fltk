@@ -61,7 +61,7 @@ fn main() {
     panic::set_hook(Box::new(|panic_info| { message(200, 200, &panic_info.to_string());}));
     let myapp = App::default().with_scheme(AppScheme::Plastic);
     let vmargin = 10;
-    let hmargin = 5;
+    let hmargin = 20;
     let row_height = 20;
     let row1_y = vmargin;
     let row2_y = row1_y + row_height + vmargin;
@@ -85,30 +85,30 @@ fn main() {
                         .with_label("Choose Directory");
     let directory_label = controls::Label::new(175, row3_y, 400, row_height, "", w.color());
 
-    let inp_filetypes = controls::TextBox::new(165, row4_y, 400, row_height, 
+    let inp_filetypes = controls::TextBox::new(hmargin + 150, row4_y, 400, row_height, 
                         "txt", "File Types (e.g. txt,doc): ");
 
-    let inp_search = controls::TextBox::new(85, row5_y, 400, row_height, "", "Search For:");
-    let chk_usecase_button = CheckButton::default().with_pos(100, row6_y)
+    let inp_search = controls::TextBox::new(hmargin + 75, row5_y, 400, row_height, "", "Search For:");
+    let chk_usecase_button = CheckButton::default().with_pos(hmargin + 90, row6_y)
                                 .with_size(20, row_height).with_align(Align::Left).with_label("Case sensitive");
 
-    let inp_regex_search = controls::TextBox::new(365, row7_y, 425, row_height, "",
+    let inp_regex_search = controls::TextBox::new(hmargin + 335, row7_y, 425, row_height, "",
                          "Regular expression (supercedes search term and case):");
 
-    let mut inp_max_files = IntInput::default().with_pos(140, row8_y)
+    let mut inp_max_files = IntInput::default().with_pos(hmargin + 130, row8_y)
                             .with_size(50, row_height).with_align(Align::Left).with_label("Max found files limit: ");
     inp_max_files.set_maximum_size(4);
     inp_max_files.set_value("250");
 
-    let inp_log_file = controls::TextBox::new(130, row9_y,
+    let inp_log_file = controls::TextBox::new(hmargin + 115, row9_y,
                          400, row_height, "", "Log File (optional):");   
     let mut log_file_button = Button::default().with_pos(545, row9_y).with_size(125, 20)
                         .with_label("Choose Log File");
 
-    let mut search_button = Button::default().with_pos(5, row10_y).with_size(100, row_height)
+    let mut search_button = Button::default().with_pos(hmargin + 5, row10_y).with_size(100, row_height)
                         .with_label("Search");
 
-    let mut found_file_browser = Browser::default().with_pos(5, row11_y).with_size(775, 290);
+    let mut found_file_browser = Browser::default().with_pos(hmargin, row11_y).with_size(760, 290);
 
     w.make_resizable(true);
     w.end();
@@ -120,7 +120,7 @@ fn main() {
     directory_button.emit(s, Message::StartDirectory);
     log_file_button.emit(s, Message::LogFile);
 
-    while myapp.wait().unwrap() {
+    while myapp.wait() {
         match r.recv() {
             Some(msg) => match msg {
                 Message::Search => {
@@ -204,7 +204,7 @@ fn get_log_file(myapp: &App, log_file: &str) -> String{
     let mut fc = FileChooser::new(log_file, "", FileChooserType::Single, "Choose your log file...");
     fc.show();
     while fc.shown() {
-        myapp.wait().unwrap();
+        myapp.wait();
     }
     if fc.value(1).is_none(){
         return log_file.to_string();
@@ -218,7 +218,7 @@ fn get_start_directory(myapp: &App, start_directory: &str) -> String{
     let mut fc = FileChooser::new(start_directory, "", FileChooserType::Directory, "Choose your start directory...");
     fc.show();
     while fc.shown() {
-        myapp.wait().unwrap();
+        myapp.wait();
     }
     //println!("{} {}", fc.value(1).unwrap(), fc.directory().unwrap());
     if fc.value(1).is_none(){
@@ -422,8 +422,3 @@ fn log(log_name: &str, file_list: &Vec<String>) -> Result<bool, BobError>{
 
     Ok(true)
 }
-
-
-
-
-
