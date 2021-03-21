@@ -40,6 +40,52 @@ enum Message {
 struct BobError {
     text: String,
 }
+
+struct Rows {
+    row_height: i32,
+    row1_y: i32,
+    row2_y: i32,
+    row3_y: i32,
+    row4_y: i32,
+    row5_y: i32,
+    row6_y: i32,
+    row7_y: i32,
+    row8_y: i32,
+    row9_y: i32,
+    row10_y: i32,
+    row11_y: i32,            
+}
+impl Rows {
+    fn new () -> Rows {
+        let vmargin = 10;
+        let row_height = 20;
+        let row1_y = vmargin;
+        let row2_y = row1_y + row_height + vmargin;
+        let row3_y = row2_y + row_height + vmargin;
+        let row4_y = row3_y + row_height + vmargin;
+        let row5_y = row4_y + row_height + vmargin;
+        let row6_y = row5_y + row_height + (vmargin / 2);
+        let row7_y = row6_y + row_height + vmargin;
+        let row8_y = row7_y + row_height + vmargin;
+        let row9_y = row8_y + row_height + vmargin;
+        let row10_y = row9_y + row_height + vmargin;
+        let row11_y = row10_y + row_height + vmargin;
+        Self {
+            row_height: row_height,
+            row1_y: row1_y,
+            row2_y: row2_y,
+            row3_y: row3_y,
+            row4_y: row4_y,
+            row5_y: row5_y,
+            row6_y: row6_y,
+            row7_y: row7_y,
+            row8_y: row8_y,
+            row9_y: row9_y,
+            row10_y: row10_y,
+            row11_y: row11_y,
+        }
+    }
+}
 impl fmt::Display for BobError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", &self.text)
@@ -58,57 +104,49 @@ impl Error for BobError {}
 const BAD_FILE_CHARS: &str = r#"[\\*?"<>|]"#;
 
 fn main() {
+    build_window();
+}
+
+fn build_window() {
     panic::set_hook(Box::new(|panic_info| { message(200, 200, &panic_info.to_string());}));
     let myapp = App::default().with_scheme(AppScheme::Plastic);
-    let vmargin = 10;
     let hmargin = 20;
-    let row_height = 20;
-    let row1_y = vmargin;
-    let row2_y = row1_y + row_height + vmargin;
-    let row3_y = row2_y + row_height + vmargin;
-    let row4_y = row3_y + row_height + vmargin;
-    let row5_y = row4_y + row_height + vmargin;
-    let row6_y = row5_y + row_height + (vmargin / 2);
-    let row7_y = row6_y + row_height + vmargin;
-    let row8_y = row7_y + row_height + vmargin;
-    let row9_y = row8_y + row_height + vmargin;
-    let row10_y = row9_y + row_height + vmargin;
-    let row11_y = row10_y + row_height + vmargin;
+    let rows = Rows::new();
     let mut w = DoubleWindow::default().with_size(800, 600).center_screen().with_label("Rust File Crawler using fltk-rs");
-    let mut title = controls::Label::new(hmargin, row1_y, 750, row_height, "", w.color());
+    let mut title = controls::Label::new(hmargin, rows.row1_y, 750, rows.row_height, "", w.color());
     title.set_text_color(Color::Red);
-    let greeting = controls::Label::new(hmargin, row2_y, 750, row_height, 
+    let greeting = controls::Label::new(hmargin, rows.row2_y, 750, rows.row_height, 
         "Welcome to FileCrawler! Search the contents of files for your search term or regular expression...",
         w.color());
 
-    let mut directory_button = Button::default().with_pos(hmargin, row3_y).with_size(150, row_height)
+    let mut directory_button = Button::default().with_pos(hmargin, rows.row3_y).with_size(150, rows.row_height)
                         .with_label("Choose Directory");
-    let directory_label = controls::Label::new(175, row3_y, 400, row_height, "", w.color());
+    let directory_label = controls::Label::new(175, rows.row3_y, 400, rows.row_height, "", w.color());
 
-    let inp_filetypes = controls::TextBox::new(hmargin + 150, row4_y, 400, row_height, 
+    let inp_filetypes = controls::TextBox::new(hmargin + 150, rows.row4_y, 400, rows.row_height, 
                         "txt", "File Types (e.g. txt,doc): ");
 
-    let inp_search = controls::TextBox::new(hmargin + 75, row5_y, 400, row_height, "", "Search For:");
-    let chk_usecase_button = CheckButton::default().with_pos(hmargin + 90, row6_y)
-                                .with_size(20, row_height).with_align(Align::Left).with_label("Case sensitive");
+    let inp_search = controls::TextBox::new(hmargin + 75, rows.row5_y, 400, rows.row_height, "", "Search For:");
+    let chk_usecase_button = CheckButton::default().with_pos(hmargin + 90, rows.row6_y)
+                                .with_size(20, rows.row_height).with_align(Align::Left).with_label("Case sensitive");
 
-    let inp_regex_search = controls::TextBox::new(hmargin + 335, row7_y, 425, row_height, "",
+    let inp_regex_search = controls::TextBox::new(hmargin + 335, rows.row7_y, 425, rows.row_height, "",
                          "Regular expression (supercedes search term and case):");
 
-    let mut inp_max_files = IntInput::default().with_pos(hmargin + 130, row8_y)
-                            .with_size(50, row_height).with_align(Align::Left).with_label("Max found files limit: ");
+    let mut inp_max_files = IntInput::default().with_pos(hmargin + 130, rows.row8_y)
+                            .with_size(50, rows.row_height).with_align(Align::Left).with_label("Max found files limit: ");
     inp_max_files.set_maximum_size(4);
     inp_max_files.set_value("250");
 
-    let inp_log_file = controls::TextBox::new(hmargin + 115, row9_y,
-                         400, row_height, "", "Log File (optional):");   
-    let mut log_file_button = Button::default().with_pos(545, row9_y).with_size(125, 20)
+    let inp_log_file = controls::TextBox::new(hmargin + 115, rows.row9_y,
+                         400, rows.row_height, "", "Log File (optional):");   
+    let mut log_file_button = Button::default().with_pos(545, rows.row9_y).with_size(125, 20)
                         .with_label("Choose Log File");
 
-    let mut search_button = Button::default().with_pos(hmargin + 5, row10_y).with_size(100, row_height)
+    let mut search_button = Button::default().with_pos(hmargin + 5, rows.row10_y).with_size(100, rows.row_height)
                         .with_label("Search");
 
-    let mut found_file_browser = Browser::default().with_pos(hmargin, row11_y).with_size(760, 290);
+    let mut found_file_browser = Browser::default().with_pos(hmargin, rows.row11_y).with_size(760, 290);
 
     w.make_resizable(true);
     w.end();
@@ -197,7 +235,6 @@ fn main() {
         }
         thread::sleep(time::Duration::from_millis(16));
     }
-
 }
 
 fn get_log_file(myapp: &App, log_file: &str) -> String{
