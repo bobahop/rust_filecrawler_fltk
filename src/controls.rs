@@ -1,4 +1,9 @@
-use fltk::{input::Input, output::Output, prelude::*};
+use fltk::{
+    enums::{Align, Color, FrameType},
+    input::Input,
+    output::Output,
+    prelude::*,
+};
 use std::ops::{Deref, DerefMut};
 
 pub struct TextBox {

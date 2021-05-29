@@ -5,6 +5,7 @@ use fltk::{
     browser::Browser,
     button::{Button, CheckButton},
     dialog:: {FileChooser, FileChooserType, message},
+    enums::{Align, Color},
     input::{IntInput},
     prelude::*,
     window::DoubleWindow,
